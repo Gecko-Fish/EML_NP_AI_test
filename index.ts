@@ -94,7 +94,8 @@ async function GetCorrespondingIndex (referanceString: string, questionList: any
 
 
 
-
+let conversation: any = [];
+conversation = gpt.createConversation(conversation, 'system', 'Take the role of a patient in a practice for a nurse practitioner. Respond naturally and follow further system instructions.');
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -103,23 +104,41 @@ const rl = readline.createInterface({
 
 function getUserInput() {
 
-    let answer;
-    while(answer != '{stop}'){
-        rl.question('Input: ', async (answer) => {
-            console.log(`You said: ${answer}`);
-        
-            const parms = await GetCorrespondingIndex(answer, questionList);
-            const index: keyof typeof questionList = parms.index;
-            const match_quality: number = parms.match_quality;
-        
-            console.log('conf:', match_quality);
-            console.log('q:', questionList[index]);
-            console.log('a:', answerList[index]);
-        
-            // Close the readline interface
+    rl.question('Input: ', async (userInput) => {
+
+        if(userInput === '<!>'){
             rl.close();
-        });
-    }
+            return;
+        }
+
+        console.log(`You said: ${userInput}`);
+    
+        const parms = await GetCorrespondingIndex(userInput, questionList);
+        const index: keyof typeof questionList = parms.index;
+        const match_quality: number = parms.match_quality;
+        const question = questionList[index];
+        const answer = answerList[index];
+        console.log('conf:', match_quality);
+        console.log('q:', question);
+        console.log('a:', answerList[index]);
+    
+        
+        conversation = gpt.createConversation(conversation, 'user', userInput);
+        const messages = gpt.createConversation(conversation, 'system', 'Modify the following string to fit with rest of the conversation in a natural way as a response to the user. Do not change the informational content of the string. Respond with only the modified content. Do not add extra details that were not provided. Here is the string: ');
+        const response = await gpt.OpenAIAPI({
+            model: 'gpt-3.5-turbo',
+            messages: messages,
+            temperature: 0,
+            max_tokens: 100
+            
+        }, 'https://api.openai.com/v1/chat/completions');
+
+        const edit = response.choices[0].message.content;
+        console.log('e:', edit);
+        conversation = gpt.createConversation(conversation, 'assistant', edit);
+
+        getUserInput();
+    });
 }
 
 // Call the function to start waiting for user input
