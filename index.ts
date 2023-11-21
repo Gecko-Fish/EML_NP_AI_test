@@ -187,7 +187,7 @@ function getUserInput() {
         const response = await gpt.OpenAIAPI({
             model: 'gpt-3.5-turbo',
             messages: messages,
-            temperature: 0,
+            temperature: 0.3,
             max_tokens: 100
             
         }, 'https://api.openai.com/v1/chat/completions');
