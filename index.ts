@@ -1,5 +1,7 @@
 import * as gpt from './src/GPT/gpt';
+import * as embed from './src/Embed/embed';
 import readline from 'readline';
+import fs from 'fs';
 
 // interface GptOptions {
 //     model: string;
@@ -12,7 +14,7 @@ import readline from 'readline';
 // }
 
 
-const questionList = {
+const questionDict = {
     "0": "{No Match}",
     "1": "Do you have any existing medical conditions?",
     "2": "Are you currently taking any medications?",
@@ -46,7 +48,7 @@ const questionList = {
     "30": "Are there any specific environmental factors that might affect your health?",
 };
 
-const answerList = {
+const answerDict = {
     "0": null,
     "1": "Yes, I have asthma.",
     "2": "Currently, I take medication for high blood pressure.",
@@ -78,16 +80,88 @@ const answerList = {
     "28": "I enjoy playing tennis on weekends for recreation.",
     "29": "I've donated blood a couple of times, and my blood tests have been normal.",
     "30": "I live in a pollution-free area, and I'm conscious of environmental factors.",
-  };
+};
 
-async function GetCorrespondingIndex (referanceString: string, questionList: any){
+// Convert to array format (It might be better if it started in array format)
+const questionList: Array<string> = [];
+for (let [key, value] of Object.entries(questionDict)) {
+    if(!value) value = '';
+    questionList.push(value);
+}
+
+// Convert to array format (It might be better if it started in array format)
+const answerList: Array<string> = [];
+for (let [key, value] of Object.entries(questionDict)) {
+    if(!value) value = '';
+    questionList.push(value);
+}
+
+
+const SearchReferance = async (referanceEmbeding: Array<Array<number>>, query: string)=>{
+
+    const queryEmbeding = (await embed.GetEmbedding(query))[0];
+    console.log(queryEmbeding);
+
+    const topResults = embed.PerformSearch(queryEmbeding, referanceEmbeding);
+    console.log('Top search results:', topResults);
+
+    return topResults;
+}
+
+
+const EnsureFileCreated =  async (filePath: string, fileName: string, Callback: Function)=>{
+
+    const fullPath = filePath+'/'+fileName;
+    // Check if a file with that name exists and either make it or load the value
+    try {
+        // Check if the file already exists
+        await fs.promises.stat(fullPath);
+        console.log(`File ${fullPath} already exists. Not overwriting.`);
+
+        answerDict
+
+    } catch (error: any) {
+        // If the file does not exist, write the JSON data to it
+        if (error.code === 'ENOENT') {
+
+            const data = await Callback();
+            console.log('Data to write to file:', data);
+
+            // Create the directory if it doesn't exist
+            await fs.promises.mkdir(filePath, { recursive: true });
+
+            await fs.promises.writeFile(fullPath, JSON.stringify(data, null, 2));
+            console.log(`File ${fullPath} created and data written successfully.`);
+
+        } else {
+            // Handle other errors
+            console.error('Error checking file existence:', error.message);
+        }
+    }
+};
+
+const questionEmbeddingPath = './savedEmbedding/questions.json';
+EnsureFileCreated('savedEmbedding', 'questions.json', async ()=>{
+    // Get the embedding
+    console.log(questionList.slice(0, 5));
+    const referanceEmbeding = await embed.GetEmbedding(questionList.slice(0, 5));
+    console.log(referanceEmbeding);
+    return referanceEmbeding;
+
+}).then(()=>{
+    // Call the function to start waiting for user input
+    getUserInput();
+});
+
+
+async function GetCorrespondingIndex (referanceString: string, questionDict: any){
     
     const messages = [
         {
             role: 'system', content: 'The string index pairs are as follows:'
         },
         {
-            role: 'system', content: JSON.stringify(questionList)
+            role: 'system', content: JSON.stringify(questionDict)
         },
         {
             role: 'system', content: 'The referance string is:' + referanceString
@@ -143,7 +217,7 @@ const character = {
 
 let conversation: any = [];
 conversation = gpt.createConversation(conversation, 'system', `You will no longer act as a language model assistant. Your name is ${character.name}. You will play the role of a patient. Here is the background information of the character that you will be playing: ${JSON.stringify(character)}`);
-conversation = gpt.createConversation(conversation, 'system', `You are a patient talking with a nurse practitioner. Respond naturally and follow further system instructions.`);
+conversation = gpt.createConversation(conversation, 'system', `You are a patient talking with a nurse practitioner. As a patient you are here to answer questions about the character you are playing (${character.name}). Respond naturally and follow further system instructions.`);
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -161,21 +235,29 @@ function getUserInput() {
         }
 
         console.log(`You said: ${userInput}`);
+
+        const fileContent = await fs.promises.readFile(questionEmbeddingPath, 'utf-8');
+        const referanceEmbeding = JSON.parse(fileContent);
+        const searchResults = await SearchReferance(referanceEmbeding, userInput);
     
-        const parms = await GetCorrespondingIndex(userInput, questionList);
-        let index: keyof typeof questionList = parms.index;
-        const match_quality: number = parms.match_quality;
-        const question = questionList[index];
+        // const parms = await GetCorrespondingIndex(userInput, questionDict);
+        // let index: keyof typeof questionDict = parms.index;
+        // const match_quality: number = (parms.match_quality)/10;
+
+        let index: keyof typeof questionDict = searchResults[0].index as any;
+        const match_quality: number = searchResults[0].similarity;
+
+        const question = questionDict[index];
 
         // If the match is bad then return the default
-        if(match_quality < 8){
+        if(match_quality < 0.6){
             index = '0';
         }
 
-        let answer = answerList[index];
+        let answer = answerDict[index];
         console.log('conf:', match_quality);
         console.log('q:', question);
-        console.log('a:', answerList[index]);
+        console.log('a:', answerDict[index]);
     
 
         
@@ -183,7 +265,9 @@ function getUserInput() {
         if(!answer){
             answer = '{No string provided. Make up an answer}';
         }
-        const messages = gpt.createConversation(conversation, 'system', `Modify the following string to fit with rest of the conversation in a natural way as a response to the user. Though you can change the original string to make it sound more natural do not change the facts that are provided. Do not add extra facts that were not provided. Here is the string: ${answer}`);
+
+        // This message is appended to the end of the conversation but does not stay in the history
+        const messages = gpt.createConversation(conversation, 'system', `Modify the following string to fit with rest of the conversation in a natural way as a response to the nurse. Though you can change the original string to make it sound more natural do not change the facts that are provided. Do not add extra facts that were not provided. Here is the string: ${answer}`);
         const response = await gpt.OpenAIAPI({
             model: 'gpt-3.5-turbo',
             messages: messages,
@@ -199,6 +283,3 @@ function getUserInput() {
         getUserInput();
     });
 }
-
-// Call the function to start waiting for user input
-getUserInput();
