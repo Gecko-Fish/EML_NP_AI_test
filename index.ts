@@ -31,21 +31,21 @@ const questionDict = {
     "13": "Do you follow a specific dietary regimen or have dietary restrictions?",
     "14": "Have you ever experienced any mental health concerns or sought therapy?",
     "15": "How would you describe your sleep patterns and quality of sleep?",
-    "16": "Do you engage in any recreational drug use or excessive alcohol consumption?",
-    "17": "Have you had any recent illnesses or infections?",
-    "18": "Are you up to date with your vaccinations?",
-    "19": "Have you ever had issues with your digestive system or bowel movements?",
-    "20": "Do you have any concerns about your skin or dermatological health?",
-    "21": "Have you ever had any respiratory infections or issues?",
-    "22": "Do you engage in any regular cardiovascular exercise?",
-    "23": "Are you currently monitoring any specific health metrics, like blood pressure or cholesterol?",
-    "24": "Have you ever experienced joint pain or arthritis?",
-    "25": "Do you have a history of migraines or persistent headaches?",
-    "26": "Are you satisfied with your current mental and emotional well-being?",
-    "27": "Have you had any issues with your urinary system or kidneys?",
-    "28": "Do you participate in any sports or recreational activities?",
-    "29": "Have you ever donated blood or undergone any significant blood tests?",
-    "30": "Are there any specific environmental factors that might affect your health?",
+    // "16": "Do you engage in any recreational drug use or excessive alcohol consumption?",
+    // "17": "Have you had any recent illnesses or infections?",
+    // "18": "Are you up to date with your vaccinations?",
+    // "19": "Have you ever had issues with your digestive system or bowel movements?",
+    // "20": "Do you have any concerns about your skin or dermatological health?",
+    // "21": "Have you ever had any respiratory infections or issues?",
+    // "22": "Do you engage in any regular cardiovascular exercise?",
+    // "23": "Are you currently monitoring any specific health metrics, like blood pressure or cholesterol?",
+    // "24": "Have you ever experienced joint pain or arthritis?",
+    // "25": "Do you have a history of migraines or persistent headaches?",
+    // "26": "Are you satisfied with your current mental and emotional well-being?",
+    // "27": "Have you had any issues with your urinary system or kidneys?",
+    // "28": "Do you participate in any sports or recreational activities?",
+    // "29": "Have you ever donated blood or undergone any significant blood tests?",
+    // "30": "Are there any specific environmental factors that might affect your health?",
 };
 
 const answerDict = {
@@ -65,21 +65,21 @@ const answerDict = {
     "13": "I follow a balanced diet with a focus on fruits and vegetables.",
     "14": "I haven't experienced significant mental health concerns.",
     "15": "I usually get around 7-8 hours of sleep, and it's generally good quality.",
-    "16": "I don't use recreational drugs, and I drink alcohol occasionally in moderation.",
-    "17": "No recent illnesses, just the usual seasonal colds.",
-    "18": "Yes, I'm up to date with my vaccinations.",
-    "19": "No issues with my digestive system or bowel movements.",
-    "20": "I haven't noticed any significant skin concerns.",
-    "21": "I had a respiratory infection last year, but it cleared up with antibiotics.",
-    "22": "Yes, I incorporate regular cycling into my exercise routine.",
-    "23": "I monitor my blood pressure regularly, and it's within a healthy range.",
-    "24": "No history of joint pain or arthritis.",
-    "25": "Occasional migraines, especially during stressful periods.",
-    "26": "Overall, I feel content with my mental and emotional well-being.",
-    "27": "No issues with my urinary system or kidneys.",
-    "28": "I enjoy playing tennis on weekends for recreation.",
-    "29": "I've donated blood a couple of times, and my blood tests have been normal.",
-    "30": "I live in a pollution-free area, and I'm conscious of environmental factors.",
+    // "16": "I don't use recreational drugs, and I drink alcohol occasionally in moderation.",
+    // "17": "No recent illnesses, just the usual seasonal colds.",
+    // "18": "Yes, I'm up to date with my vaccinations.",
+    // "19": "No issues with my digestive system or bowel movements.",
+    // "20": "I haven't noticed any significant skin concerns.",
+    // "21": "I had a respiratory infection last year, but it cleared up with antibiotics.",
+    // "22": "Yes, I incorporate regular cycling into my exercise routine.",
+    // "23": "I monitor my blood pressure regularly, and it's within a healthy range.",
+    // "24": "No history of joint pain or arthritis.",
+    // "25": "Occasional migraines, especially during stressful periods.",
+    // "26": "Overall, I feel content with my mental and emotional well-being.",
+    // "27": "No issues with my urinary system or kidneys.",
+    // "28": "I enjoy playing tennis on weekends for recreation.",
+    // "29": "I've donated blood a couple of times, and my blood tests have been normal.",
+    // "30": "I live in a pollution-free area, and I'm conscious of environmental factors.",
 };
 
 // Convert to array format (It might be better if it started in array format)
@@ -91,24 +91,28 @@ for (let [key, value] of Object.entries(questionDict)) {
 
 // Convert to array format (It might be better if it started in array format)
 const answerList: Array<string> = [];
-for (let [key, value] of Object.entries(questionDict)) {
+for (let [key, value] of Object.entries(answerDict)) {
     if(!value) value = '';
-    questionList.push(value);
+    answerList.push(value);
 }
 
 
 const SearchReferance = async (referanceEmbeding: Array<Array<number>>, query: string)=>{
 
     const queryEmbeding = (await embed.GetEmbedding(query))[0];
-    console.log(queryEmbeding);
+    // console.log(queryEmbeding);
 
-    const topResults = embed.PerformSearch(queryEmbeding, referanceEmbeding);
-    console.log('Top search results:', topResults);
+    const topResults = embed.PerformSearch(embed.DistanceMetric.EuclideanDistance, queryEmbeding, referanceEmbeding);
 
     return topResults;
 }
 
-
+/**
+ * Creates a file if it does not already exist
+ * @param filePath 
+ * @param fileName 
+ * @param Callback Called in the event that a file needs to be written. The output is saved in the file.
+ */
 const EnsureFileCreated =  async (filePath: string, fileName: string, Callback: Function)=>{
 
     const fullPath = filePath+'/'+fileName;
@@ -117,8 +121,6 @@ const EnsureFileCreated =  async (filePath: string, fileName: string, Callback: 
         // Check if the file already exists
         await fs.promises.stat(fullPath);
         console.log(`File ${fullPath} already exists. Not overwriting.`);
-
-        answerDict
 
     } catch (error: any) {
         // If the file does not exist, write the JSON data to it
@@ -140,13 +142,24 @@ const EnsureFileCreated =  async (filePath: string, fileName: string, Callback: 
     }
 };
 
+const embeddingPath = 'savedEmbedding';
 const questionEmbeddingPath = './savedEmbedding/questions.json';
-EnsureFileCreated('savedEmbedding', 'questions.json', async ()=>{
+const answerSavePath = './savedEmbedding/answers.json';
+EnsureFileCreated(embeddingPath, 'questions.json', async ()=>{
     // Get the embedding
-    console.log(questionList.slice(0, 5));
-    const referanceEmbeding = await embed.GetEmbedding(questionList.slice(0, 5));
-    console.log(referanceEmbeding);
-    return referanceEmbeding;
+    const referanceEmbeding = await embed.GetEmbedding(questionList);
+    const jsonEmbeding = {
+        embedded: questionList,
+        embedding: referanceEmbeding
+    };
+
+    // Save the answers alongside the embeddings
+    // Create the directory if it doesn't exist
+    await fs.promises.mkdir('./' + embeddingPath, { recursive: true });
+
+    await fs.promises.writeFile(answerSavePath, JSON.stringify(answerList, null, 2));
+
+    return jsonEmbeding;
 
 }).then(()=>{
     // Call the function to start waiting for user input
@@ -236,50 +249,68 @@ function getUserInput() {
 
         console.log(`You said: ${userInput}`);
 
-        const fileContent = await fs.promises.readFile(questionEmbeddingPath, 'utf-8');
-        const referanceEmbeding = JSON.parse(fileContent);
-        const searchResults = await SearchReferance(referanceEmbeding, userInput);
+        try{
+
+            const referanceEmbeding = JSON.parse(await fs.promises.readFile(questionEmbeddingPath, 'utf-8'));
+            const searchResults = await SearchReferance(referanceEmbeding.embedding, userInput);
     
-        // const parms = await GetCorrespondingIndex(userInput, questionDict);
-        // let index: keyof typeof questionDict = parms.index;
-        // const match_quality: number = (parms.match_quality)/10;
-
-        let index: keyof typeof questionDict = searchResults[0].index as any;
-        const match_quality: number = searchResults[0].similarity;
-
-        const question = questionDict[index];
-
-        // If the match is bad then return the default
-        if(match_quality < 0.6){
-            index = '0';
-        }
-
-        let answer = answerDict[index];
-        console.log('conf:', match_quality);
-        console.log('q:', question);
-        console.log('a:', answerDict[index]);
+            // Get the value at each index
+            const searchResults_filled = searchResults.map(value =>{
+                return {
+                    result: questionList[value.index],
+                    ...value
+                };
+            });
     
-
+            console.log('Top search results:', searchResults_filled);
+    
         
-        conversation = gpt.createConversation(conversation, 'user', userInput);
-        if(!answer){
-            answer = '{No string provided. Make up an answer}';
+            // const parms = await GetCorrespondingIndex(userInput, questionDict);
+            // let index: keyof typeof questionDict = parms.index;
+            // const match_quality: number = (parms.match_quality)/10;
+    
+            const searchResult = searchResults_filled[0]
+            const similarity = searchResult.similarity;
+    
+            let index = searchResult.index;
+            // If the match is bad then return the default
+            if(similarity < 0.7){
+                index = 0;
+            }
+    
+            const question = referanceEmbeding.embedded[index];
+    
+            const answerFileJSON = JSON.parse(await fs.promises.readFile(answerSavePath, 'utf-8'));
+            let answer = answerFileJSON[index];
+
+            console.log('similarity:', similarity);
+            console.log('question:', question);
+            console.log('answer:', answer);
+            console.log('\n');
+        
+            conversation = gpt.createConversation(conversation, 'user', userInput);
+            if(!answer){
+                answer = '{No string provided. Make up an answer}';
+            }
+    
+            // This message is appended to the end of the conversation but does not stay in the history
+            const messages = gpt.createConversation(conversation, 'system', `Modify the following string to fit with rest of the conversation in a natural way as a response to the nurse. Though you can change the original string to make it sound more natural do not change the facts that are provided. Edit it in a natural and conversational format that does not alter the factual information. Here is the string: ${answer}`);
+            const response = await gpt.OpenAIAPI({
+                model: 'gpt-3.5-turbo',
+                messages: messages,
+                temperature: 0.3,
+                max_tokens: 100
+                
+            }, 'https://api.openai.com/v1/chat/completions');
+    
+            const edit = response.choices[0].message.content;
+            console.log('edit:', edit);
+            conversation = gpt.createConversation(conversation, 'assistant', edit);
+    
+            getUserInput();
+
+        }catch(err: any){
+            throw new Error(err);
         }
-
-        // This message is appended to the end of the conversation but does not stay in the history
-        const messages = gpt.createConversation(conversation, 'system', `Modify the following string to fit with rest of the conversation in a natural way as a response to the nurse. Though you can change the original string to make it sound more natural do not change the facts that are provided. Do not add extra facts that were not provided. Here is the string: ${answer}`);
-        const response = await gpt.OpenAIAPI({
-            model: 'gpt-3.5-turbo',
-            messages: messages,
-            temperature: 0.3,
-            max_tokens: 100
-            
-        }, 'https://api.openai.com/v1/chat/completions');
-
-        const edit = response.choices[0].message.content;
-        console.log('e:', edit);
-        conversation = gpt.createConversation(conversation, 'assistant', edit);
-
-        getUserInput();
     });
 }

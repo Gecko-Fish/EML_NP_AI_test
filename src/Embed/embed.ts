@@ -18,7 +18,40 @@ export async function GetEmbedding(source: Array<any> | String): Promise<Array<A
     return EmbedingArray;
 }
 
-// Function to calculate cosine similarity between two vectors
+export function NormalizeVector(vector: Array<number>): Array<number> {
+    const magnitude = Math.sqrt(vector.reduce((acc, val) => acc + val ** 2, 0));
+
+    if (magnitude === 0) {
+        throw new Error("Cannot normalize a zero vector");
+    }
+    
+    return vector.map((val) => val / magnitude);
+}
+
+export function EuclideanDistance(vectorA: Array<number>, vectorB: Array<number>) {
+
+    const distance = Math.sqrt(vectorA.reduce((acc, val, i) => acc + (val - vectorB[i]) ** 2, 0));
+
+    // Adding 1 to put it in the range [0, 1]
+    return 1 / (1 + distance);
+}
+
+export function ManhattanDistance(vectorA: Array<number>, vectorB: Array<number>) {
+
+    const distance = vectorA.reduce((acc, val, i) => acc + Math.abs(val - vectorB[i]), 0);
+
+    // Adding 1 to put it in the range [0, 1]
+    return 1 / (1 + distance);
+}
+
+export function JaccardSimilarity(vectorA: Array<number>, vectorB: Array<number>) {
+    
+    const intersection = vectorA.reduce((acc, val, i) => acc + (val === 1 && vectorB[i] === 1 ? 1 : 0), 0);
+    const union = vectorA.reduce((acc, val, i) => acc + (val === 1 || vectorB[i] === 1 ? 1 : 0), 0);
+    
+    return intersection / union;
+}
+
 export function CosineSimilarity(vectorA: Array<number>, vectorB: Array<number>) {
     const dotProduct = vectorA.reduce((acc, val, i) => acc + val * vectorB[i], 0);
     const magnitudeA = Math.sqrt(vectorA.reduce((acc, val) => acc + val ** 2, 0));
@@ -27,10 +60,32 @@ export function CosineSimilarity(vectorA: Array<number>, vectorB: Array<number>)
     return dotProduct / (magnitudeA * magnitudeB);
 }
 
+export enum DistanceMetric {
+    CosineSimilarity,
+    EuclideanDistance,
+    ManhattanDistance,
+    JaccardSimilarity,
+}
+
+export function CalculateDistance(metric: DistanceMetric, vectorA: number[], vectorB: number[]): number {
+    switch (metric) {
+        case DistanceMetric.CosineSimilarity:
+            return CosineSimilarity(vectorA, vectorB);
+        case DistanceMetric.EuclideanDistance:
+            return EuclideanDistance(vectorA, vectorB);
+        case DistanceMetric.ManhattanDistance:
+            return ManhattanDistance(vectorA, vectorB);
+        case DistanceMetric.JaccardSimilarity:
+            return JaccardSimilarity(vectorA, vectorB);
+        default:
+            throw new Error("Invalid distance metric");
+    }
+}
+
 // Function to perform a text search
-export function PerformSearch(searchVector: Array<number>, otherVectors: Array<Array<number>>) {
+export function PerformSearch(metric: DistanceMetric, searchVector: Array<number>, otherVectors: Array<Array<number>>, numTopResult = 5) {
     const rankedResults = otherVectors.map((vector, index) => {
-        const similarity = CosineSimilarity(searchVector, vector);
+        const similarity = CalculateDistance(metric, searchVector, vector);
         return { index, similarity };
     });
 
@@ -38,6 +93,6 @@ export function PerformSearch(searchVector: Array<number>, otherVectors: Array<A
     const sortedResults = rankedResults.sort((a, b) => b.similarity - a.similarity);
 
     // Return the top-ranked results
-    const topResults = sortedResults.slice(0, 5);
+    const topResults = sortedResults.slice(0, numTopResult);
     return topResults;
 }
