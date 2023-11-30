@@ -274,7 +274,7 @@ function getUserInput() {
     
             let index = searchResult.index;
             // If the match is bad then return the default
-            if(similarity < 0.7){
+            if(similarity < 0.6){
                 index = 0;
             }
     
@@ -290,7 +290,7 @@ function getUserInput() {
         
             conversation = gpt.createConversation(conversation, 'user', userInput);
             if(!answer){
-                answer = '{No string provided. Make up an answer}';
+                answer = '{No string provided. Express that you do not have the information available or make up an answer.}';
             }
     
             // This message is appended to the end of the conversation but does not stay in the history
