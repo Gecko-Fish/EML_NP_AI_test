@@ -219,6 +219,44 @@ async function GetCorrespondingIndex (referanceString: string, questionDict: any
 };
 
 
+async function SelectBestMatch (messages: Array<any>, matches: any){
+    
+    const instruct = gpt.createConversation(messages, 'system', 'Using context from the conversation history, select the index from this list of index-match pairs that best matches what the user had asked. Here is the list:' + JSON.stringify(matches));
+
+    const tools = [{
+        "type": "function",
+        "function": {
+            "name": "Select_Best_Match",
+            "description": "Returns the index of the string that best matches the user's question.",
+            "parameters": {
+            "type": "object",
+            "properties": {
+                "index": {
+                "type": "number",
+                "description": "The index of the string that is the best match to the user's question."
+                }
+            },
+            "required": ["index"]
+            }
+        }
+    }];
+
+    const response = await gpt.OpenAIAPI({
+        model: 'gpt-3.5-turbo',
+        messages: instruct,
+        temperature: 0,
+        max_tokens: 100,
+        stream: false,
+        tools: tools,
+        tool_choice: {type: "function", "function": {"name": "Select_Best_Match"}}
+        
+    }, 'https://api.openai.com/v1/chat/completions');
+    
+    const parms = JSON.parse(response.choices[0].message.tool_calls[0].function.arguments);
+    return parms.index;
+};
+
+
 
 const character = {
     name: 'Bob Bill Boberton',
@@ -248,6 +286,7 @@ function getUserInput() {
         }
 
         console.log(`You said: ${userInput}`);
+        conversation = gpt.createConversation(conversation, 'user', userInput);
 
         try{
 
@@ -268,10 +307,36 @@ function getUserInput() {
             // const parms = await GetCorrespondingIndex(userInput, questionDict);
             // let index: keyof typeof questionDict = parms.index;
             // const match_quality: number = (parms.match_quality)/10;
+
+
+            // Remove the similarity clue that might confuse the selection AI
+            const searchResults_pick = searchResults_filled.map((value, i) =>{
+                return {
+                    index: i,
+                    match: value.result
+                };
+            });
     
-            const searchResult = searchResults_filled[0]
-            const similarity = searchResult.similarity;
-    
+            // Zero is the best result normally
+            let searchResult = searchResults_filled[0]
+            let similarity = searchResult.similarity;
+
+            // Overide best result with AI
+            try{
+                const contextMatch = await SelectBestMatch(conversation, searchResults_pick);
+                if(contextMatch !== 0){
+                    console.log('AI disagreed with best match');
+                }
+                
+                console.log('Search match was:', searchResult.result);
+                searchResult = searchResults_filled[contextMatch];
+                similarity = searchResult.similarity;
+                console.log('AI match is:', searchResult.result);
+
+            } catch(err){
+                console.log(err);
+            }
+
             let index = searchResult.index;
             // If the match is bad then return the default
             if(similarity < 0.6){
@@ -288,7 +353,6 @@ function getUserInput() {
             console.log('answer:', answer);
             console.log('\n');
         
-            conversation = gpt.createConversation(conversation, 'user', userInput);
             if(!answer){
                 answer = '{No string provided. Express that you do not have the information available or make up an answer.}';
             }
