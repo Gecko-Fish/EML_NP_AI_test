@@ -1,0 +1,8 @@
+* Replace .env_Example with .env and fill with an OpanAI API key
+* Use the console command "NPM start" to begin the console application or click on start.bat
+* It may freeze to write a file for the text embedding if it has not done so already
+* You can then use the terminal to talk with the AI
+* Enter this "<!>" without the quotes to see the conversation history and end the session
+* Edit questionDict, answerDict, and character variables to change the scenario
+* Make sure to delete the savedEmbedding folder if changes are made so that it can be refreshed
+* Extra libraries may need to be installed as per usual with node.js, see package.json
